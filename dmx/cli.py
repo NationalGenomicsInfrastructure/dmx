@@ -13,7 +13,7 @@ from dmx.dmx import prepare_demux
     "-l",
     "--lanes",
     default=None,
-    type=int,
+    type=list,
     help="Optional lane numbers to specify specific lanes for demuxing (e.g. 1,2,5).",
 )
 def cli(run, lanes):
@@ -26,4 +26,4 @@ def cli(run, lanes):
         run (str): The run identifier, e.g., '20250528_LH00217_0219_A22TT52LT4'.
         lanes (int, optional): Specific lane numbers for demultiplexing. If not provided, all lanes are processed.
     """
-    prepare_demux(run=run, lanes=None)
+    prepare_demux(run=run, lanes=lanes)
