@@ -6,11 +6,10 @@ from typing import Optional
 import couchdb
 import pandas as pd
 
-from lib.realms.production.data_flow_project_test.utils.samplesheet_db_manager import (
+from dataflow_dmx.core.utils.samplesheet_db_manager import (
     SampleSheetDBManager,
 )
-
-from .base import DemuxConfig, InstrumentAdapter
+from dataflow_dmx.core.adapters.base import DemuxConfig, InstrumentAdapter
 
 # NOTE: Perhaps better read from a config file or environment variable
 BCL_CONVERT = "/path/to/bcl-convert"

@@ -1,4 +1,4 @@
-from .base import DemuxConfig, InstrumentAdapter
+from dataflow_dmx.core.adapters.base import DemuxConfig, InstrumentAdapter
 
 
 class PromethIONAdapter(InstrumentAdapter):

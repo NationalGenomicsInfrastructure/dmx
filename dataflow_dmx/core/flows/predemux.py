@@ -3,8 +3,8 @@ from pathlib import Path
 
 from prefect import flow, get_run_logger, task
 
-from .adapters.adapter_list import ADAPTERS
-from .adapters.base import DemuxConfig
+from dataflow_dmx.core.adapters.adapter_list import ADAPTERS
+from dataflow_dmx.core.adapters.base import DemuxConfig
 
 
 @task(retries=2)

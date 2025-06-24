@@ -1,6 +1,6 @@
 import re
 
-from .illumina_mixin import IlluminaAdapterMixin
+from dataflow_dmx.core.adapters.illumina_mixin import IlluminaAdapterMixin
 
 
 class MiSeqAdapter(IlluminaAdapterMixin):
