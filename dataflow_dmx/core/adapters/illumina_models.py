@@ -18,7 +18,7 @@ class MiSeqAdapter(IlluminaAdapterMixin):
         return True
 
     def _bcl_convert_params(self):
-        # TODO: check if this is correct for MiSeq
+        # NOTE: Example parameter, adjust as needed
         return super()._bcl_convert_params() + ["--tiles-per-lane", "all"]
 
 
@@ -55,5 +55,8 @@ class NovaSeqXPlusAdapter(IlluminaAdapterMixin):
         return token[-9:]
 
     def _bcl_convert_params(self):
-        # TODO: check if this is correct for NovaSeq X Plus
-        return ["--barcode-mismatches", "0", "--ignore-missing-bcl"]
+        # NOTE: Example parameter, adjust as needed
+        return [
+            "--first-tile-only",
+            "true",
+        ]

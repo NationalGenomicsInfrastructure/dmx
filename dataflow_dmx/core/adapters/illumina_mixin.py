@@ -76,6 +76,14 @@ class IlluminaAdapterMixin(InstrumentAdapter):
         ss = self.write_samplesheet_to_csv(ss, self.run_path)
 
         params = self._bcl_convert_params()
+        # TODO: Add more params if needed, e.g. "-bcl-input-directory", "--output-dir", etc.
+        params += ["--bcl-input-directory", str(self.run_path)]
+        params += [
+            "--output-directory",
+            str(self.run_path / "fastq"),  # Perhaps get from config?
+        ]
+        if ss:
+            params += ["--sample-sheet", str(ss)]
         cmd = [BCL_CONVERT, *params]
 
         return DemuxConfig(
@@ -88,4 +96,7 @@ class IlluminaAdapterMixin(InstrumentAdapter):
 
     # ----- overridable knobs -----------------------------------------
     def _bcl_convert_params(self) -> list[str]:
-        return ["--barcode-mismatches", "1"]  # set default params
+        return [
+            "--first-tile-only",
+            "false",
+        ]  # set default params, NOTE: this is only an example!
