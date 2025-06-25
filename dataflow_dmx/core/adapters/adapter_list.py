@@ -1,10 +1,10 @@
-from dataflow_dmx.core.adapters.elembio import AvitiAdapter
-from dataflow_dmx.core.adapters.illumina_models import (
+from core.adapters.elembio import AvitiAdapter  # type: ignore
+from core.adapters.illumina_models import (  # type: ignore
     MiSeqAdapter,
     NextSeqAdapter,
     NovaSeqXPlusAdapter,
 )
-from dataflow_dmx.core.adapters.ont import PromethIONAdapter
+from core.adapters.ont import PromethIONAdapter  # type: ignore
 
 ADAPTERS = {
     adapter.name: adapter
