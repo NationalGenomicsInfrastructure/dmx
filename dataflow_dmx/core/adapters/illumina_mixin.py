@@ -3,13 +3,13 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Optional
 
-import couchdb
-import pandas as pd
+import couchdb  # type: ignore
+import pandas as pd  # type: ignore
 
-from dataflow_dmx.core.utils.samplesheet_db_manager import (
+from core.utils.samplesheet_db_manager import (  # type: ignore
     SampleSheetDBManager,
 )
-from dataflow_dmx.core.adapters.base import DemuxConfig, InstrumentAdapter
+from core.adapters.base import DemuxConfig, InstrumentAdapter  # type: ignore
 
 # NOTE: Perhaps better read from a config file or environment variable
 BCL_CONVERT = "/path/to/bcl-convert"
@@ -57,14 +57,18 @@ class IlluminaAdapterMixin(InstrumentAdapter):
     def _illumina_lanes(self, run_path: Path) -> list[int]:
         # Parse the RunInfo.xml to extract lanes? I thought it's better to automatically get all the lanes rather than parameterize the number
         # Production may have reasons to use only a subset of lanes, in which case we discuss
-        xml = ET.parse(run_path / "RunInfo.xml")
+        try:
+            xml = ET.parse(run_path / "RunInfo.xml")
+        except (ET.ParseError, FileNotFoundError) as e:
+            self.logger.error(f"Failed to parse RunInfo.xml: {e}")
+            return []
         return [int(e.text) for e in xml.findall(".//Lane") if e.text is not None]
 
     def build_demux_config(self) -> DemuxConfig:
         lane_list = self._illumina_lanes(self.run_path)
 
         # TODO: Do we reuse it elsewhere? Make getter/setter if so
-        flowcell_id = self.extract_flowcell_id(self.run_id)
+        flowcell_id = self.extract_flowcell_id()
 
         # SampleSheet operations (may also need to store resulting SampleSheet back to CouchDB?)
         ss = self.read_samplesheet(flowcell_id)
