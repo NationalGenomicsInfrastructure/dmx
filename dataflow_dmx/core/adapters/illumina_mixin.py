@@ -21,12 +21,12 @@ class IlluminaAdapterMixin(InstrumentAdapter):
     samplesheet_dm = SampleSheetDBManager()
     logger = logging.getLogger("IlluminaAdapterMixin")
 
-    def extract_flowcell_id(self, run_id: str) -> str:
+    def extract_flowcell_id(self) -> str:
         """
         Default Illumina behaviour: last underscore-separated token.
         Override if a model deviates (e.g. NovaSeq X Plus).
         """
-        return run_id.split("_")[-1]
+        return self.run_id.split("_")[-1]
 
     def read_samplesheet(self, flowcell_id: str) -> pd.DataFrame:
         try:
