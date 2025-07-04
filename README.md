@@ -5,25 +5,24 @@ This repo provides:
 
 * **Adapter layer** – instrument-specific helpers that create and return a
   `DemuxConfig` object (flow-cell ID, BCL-Convert command, lanes, …).
-* **Pipeline flow scaffold** – `production_demux_flow()` uses those adapters to _pretend_
+* **Pipeline scaffold** – `demux_ppl()` uses those adapters to _pretend_
   to run BCL-Convert (or skip for ONT PromethION), and other supposed demux steps.
 * **Yggdrasil handler** – `dataflow_dmx/yggdrasil_realm/flowcell_handler.py`
   auto-registers itself under the `ygg.handler` entry-point group, so
   Yggdrasil can invoke the pipeline as soon as a new flow-cell is detected.
 
----
 
-## 0 Create a conda env
+## 0. Create a conda env
 
 ```bash
 conda create -n ygg python=3.11
 conda activate ygg
 ```
 
-Use the `env` for either of the next steps (under Yggdrasil or standalone)
+Use the `env` for either of the next steps (running under Yggdrasil or standalone)
 
 
-## 1  Standalone quick-start
+## 1.  Standalone quick-start
 
 ```bash
 # 1. Clone dmx
@@ -39,7 +38,7 @@ dataflow-dmx \
   --instrument novaseqx
 ```
 
-## 2 Using the module under Yggdrasil
+## 2. Using the module under Yggdrasil
 
 1. **Install Yggdrasil editable**
 
@@ -57,7 +56,7 @@ pip install -e dmx
 
 3. **Launch Yggdrasil**
 
-(Check how to run Yggdrasil in its repo, or ask Anastasios)
+(Check how to run Yggdrasil in its repo, or ask [@glrs](https://github.com/glrs))
 
 On startup Yggdrasil’s `auto_register_external_handlers()` discovers the
 entry-point declared in `pyproject.toml`:
@@ -77,7 +76,7 @@ executes `production_demux_flow()` asynchronously.
 As of writing this, you have to trigger an event manually if you want to play with it.
 
 
-## 3 Repository overview
+## 3. Repository overview
 
 ```
 dataflow_dmx/
@@ -104,18 +103,18 @@ retries, etc., without touching pipeline code. It may also be replaced with the 
 
 * All instrument-specific behaviour lives in `core/adapters/*`.
 
-## 4 Supported Instruments
+## 4. Supported Instruments
 
 **TODO**: In the future we should mention which instruments are supported.
 Right now I just list the examples I have created, that will probably need some work from production to be called "supported".
 
-| Registry key   | Instrument                 |
-| ------------   | -------------------------- |
-| `miseq`        | Illumina MiSeq             |
-| `novaseqxplus` | Illumina NovaSeq X / XPlus |
-| `nextseq`      | Illumina NextSeq 2000      |
-| `aviti`        | ElementBio Aviti           |
-| `promethion`   | ONT PromethION             |
+| Registry key   | Instrument              |
+| ------------   | ----------------------- |
+| `miseq`        | Illumina MiSeq          |
+| `novaseqxplus` | Illumina NovaSeq XPlus  |
+| `nextseq`      | Illumina NextSeq 2000   |
+| `aviti`        | ElementBio Aviti        |
+| `promethion`   | ONT PromethION          |
 
 **Note:** Additions require only a new `Adapter` subclass and an entry in
 `adapter_list.py`.
