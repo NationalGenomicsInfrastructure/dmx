@@ -1,11 +1,16 @@
+"""
+FOR DEMO PURPOSES ONLY
+Undecided how to go with this, up to discussion.
+"""
+
 import io
 import logging
 import os
 
-import pandas as pd
+import pandas as pd  # type: ignore
 
 try:
-    from lib.couchdb.couchdb_connection import CouchDBHandler
+    from lib.couchdb.couchdb_connection import CouchDBHandler  # type: ignore
 except ImportError:  # unit-test / demo env with no CouchDB lib
     CouchDBHandler = object  # type: ignore
 
