@@ -1,4 +1,4 @@
-from core.adapters.base import DemuxConfig, InstrumentAdapter  # type: ignore
+from dataflow_dmx.core.adapters.base import DemuxConfig, InstrumentAdapter  # type: ignore
 
 # NOTE: Perhaps better read from a config file or environment variable
 AVITI_DEMUX = "/opt/element/aviti-demux"

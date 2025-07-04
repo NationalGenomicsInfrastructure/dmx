@@ -6,10 +6,10 @@ from typing import Optional
 import couchdb  # type: ignore
 import pandas as pd  # type: ignore
 
-from core.utils.samplesheet_db_manager import (  # type: ignore
+from dataflow_dmx.core.utils.samplesheet_db_manager import (  # type: ignore
     SampleSheetDBManager,
 )
-from core.adapters.base import DemuxConfig, InstrumentAdapter  # type: ignore
+from dataflow_dmx.core.adapters.base import DemuxConfig, InstrumentAdapter  # type: ignore
 
 # NOTE: Perhaps better read from a config file or environment variable
 BCL_CONVERT = "/path/to/bcl-convert"

@@ -1,4 +1,4 @@
-from core.adapters.base import DemuxConfig, InstrumentAdapter  # type: ignore
+from dataflow_dmx.core.adapters.base import DemuxConfig, InstrumentAdapter  # type: ignore
 
 
 class PromethIONAdapter(InstrumentAdapter):
