@@ -1,7 +1,23 @@
-from dataflow_dmx.core.adapters.base import DemuxConfig, InstrumentAdapter  # type: ignore
+import re
+
+from dataflow_dmx.core.adapters.base import DemuxConfig  # type: ignore
+from dataflow_dmx.core.adapters.base import InstrumentAdapter
 
 # NOTE: Perhaps better read from a config file or environment variable
 AVITI_DEMUX = "/opt/element/aviti-demux"
+
+# Aviti run-id pattern:
+#   20250822_AV242106_A2247654903
+#   {YYYYMMDD}_{instrument}_{side}{flowcell}
+# where side is 'A' or 'B'
+AVITI_RUNID_RE = re.compile(
+    r"""
+    ^(?P<date>\d{8})_                # YYYYMMDD
+    (?P<instrument>AV\d+)_           # AV instrument id
+    (?P<side>[AB])(?P<flowcell>\d+)  # side + numeric flowcell
+    $""",
+    re.VERBOSE,
+)
 
 
 class ElementAdapterMixin(InstrumentAdapter):
@@ -9,13 +25,15 @@ class ElementAdapterMixin(InstrumentAdapter):
 
 
 class AvitiAdapter(ElementAdapterMixin):
+    """Adapter for Element Biosciences Aviti."""
+
     name = "aviti"
 
     # Not needed, but may be used for validation
     @classmethod
     def matches(cls, run_id):
-        # TODO: Check if this is correct for Aviti
-        return run_id.startswith("AV")
+        """Return True iff run_id matches the Aviti pattern."""
+        return bool(AVITI_RUNID_RE.match(run_id))
 
     def extract_flowcell_id(self) -> str:
         # TODO: Check if this is correct for Aviti
