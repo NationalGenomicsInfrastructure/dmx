@@ -1,6 +1,9 @@
 import re
+from typing import ClassVar
 
-from dataflow_dmx.core.adapters.illumina_mixin import IlluminaAdapterMixin  # type: ignore
+from dataflow_dmx.core.adapters.illumina_mixin import (
+    IlluminaAdapterMixin,
+)  # type: ignore
 
 
 class MiSeqAdapter(IlluminaAdapterMixin):
@@ -10,12 +13,16 @@ class MiSeqAdapter(IlluminaAdapterMixin):
 
     name = "miseq"
 
+    # Example: 250819_M01543_0642_000000000-M5BLC
+    # YYMMDD _ M<5 digits> _ <4 digits> _ <9 digits>-<5 alnum>
+    RUNID_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^(?P<date>\d{6})_(?P<inst>M\d{5})_(?P<run>\d{4})_(?P<fcid>\d{9}-[A-Z0-9]{5})$"
+    )
+
     # Not needed, but may be used for validation
     @classmethod
     def matches(cls, run_id):
-        # TODO: check if this is correct for MiSeq
-        # return re.match(r"\d{6}_M\d{5}_\d{4}_\d{9}", run_id)
-        return True
+        return bool(cls.RUNID_RE.match(run_id))
 
     def _bcl_convert_params(self):
         # NOTE: Example parameter, adjust as needed
@@ -29,11 +36,16 @@ class NextSeqAdapter(IlluminaAdapterMixin):
 
     name = "nextseq"
 
+    # Example: 250820_VH00203_548_AAH7H2MM5
+    # YYMMDD _ VH<5 digits> _ <3 digits> _ <9 alnum>
+    RUNID_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^(?P<date>\d{6})_(?P<inst>VH\d{5})_(?P<run>\d{3})_(?P<fcid>[A-Z0-9]{9})$"
+    )
+
     # Not needed, but may be used for validation
     @classmethod
     def matches(cls, run_id):
-        # TODO: check if this is correct for NextSeq
-        return re.match(r"\d{6}_VH\d{5}_\d{4}_[A-Z0-9]{10}", run_id)
+        return bool(cls.RUNID_RE.match(run_id))
 
 
 class NovaSeqXPlusAdapter(IlluminaAdapterMixin):
@@ -43,16 +55,16 @@ class NovaSeqXPlusAdapter(IlluminaAdapterMixin):
 
     name = "novaseqxplus"
 
+    # Example: 20250903_LH00202_0271_A22VTNFLT4
+    # YYYYMMDD _ LH<5 digits> _ <4 digits> _ <10 alnum>
+    RUNID_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^(?P<date>\d{8})_(?P<inst>LH\d{5})_(?P<run>\d{4})_(?P<fcid>[A-Z0-9]{10})$"
+    )
+
     # Not needed, but may be used for validation
     @classmethod
     def matches(cls, run_id):
-        # TODO: check if this is correct for NovaSeq X Plus
-        return "_LH" in run_id
-
-    def extract_flowcell_id(self) -> str:
-        # Meet NovaSeq X Plus' needs by overriding the default behavior
-        token = self.run_id.split("_")[-1]
-        return token[-9:]
+        return bool(cls.RUNID_RE.match(run_id))
 
     def _bcl_convert_params(self):
         # NOTE: Example parameter, adjust as needed

@@ -1,15 +1,17 @@
 import logging
+import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Optional
+from typing import ClassVar
 
 import couchdb  # type: ignore
 import pandas as pd  # type: ignore
 
-from dataflow_dmx.core.utils.samplesheet_db_manager import (  # type: ignore
+from dataflow_dmx.core.adapters.base import DemuxConfig  # type: ignore
+from dataflow_dmx.core.adapters.base import InstrumentAdapter
+from dataflow_dmx.core.utils.samplesheet_db_manager import (
     SampleSheetDBManager,
-)
-from dataflow_dmx.core.adapters.base import DemuxConfig, InstrumentAdapter  # type: ignore
+)  # type: ignore
 
 # NOTE: Perhaps better read from a config file or environment variable
 BCL_CONVERT = "/path/to/bcl-convert"
@@ -18,15 +20,41 @@ BCL_CONVERT = "/path/to/bcl-convert"
 class IlluminaAdapterMixin(InstrumentAdapter):
     """Shared helpers for all Illumina instruments."""
 
+    RUNID_RE: ClassVar[re.Pattern[str] | None] = None
+
     samplesheet_dm = SampleSheetDBManager()
     logger = logging.getLogger("IlluminaAdapterMixin")
 
     def extract_flowcell_id(self) -> str:
         """
-        Default Illumina behaviour: last underscore-separated token.
-        Override if a model deviates (e.g. NovaSeq X Plus).
+        Extract the flowcell identifier (`fcid`) from the run ID.
+
+        Each Illumina adapter class must define a `RUNID_RE` regex that includes
+        a named capture group `(?P<fcid>...)`. This method uses that group to
+        return the flowcell ID.
+
+        Returns
+        -------
+        str
+            The flowcell ID captured by the adapter's `RUNID_RE`.
+
+        Raises
+        ------
+        ValueError
+            If `RUNID_RE` is missing, does not match the run ID, or does not
+            define an `fcid` group.
         """
-        return self.run_id.split("_")[-1]
+        if getattr(self, "RUNID_RE", None) is None:
+            raise ValueError(f"{self.name}: RUNID_RE is not defined")
+
+        m = self.RUNID_RE.match(self.run_id)  # type: ignore[attr-defined]
+        if not m or "fcid" not in m.groupdict():
+            raise ValueError(
+                f"{getattr(self, 'name', self.__class__.__name__)}: "
+                f"run_id {self.run_id!r} does not match expected pattern "
+                "or missing 'fcid' group"
+            )
+        return m.group("fcid")
 
     def read_samplesheet(self, flowcell_id: str) -> pd.DataFrame:
         try:
@@ -43,7 +71,7 @@ class IlluminaAdapterMixin(InstrumentAdapter):
 
     def write_samplesheet_to_csv(
         self, samplesheet: pd.DataFrame, run_path: Path
-    ) -> Optional[Path]:
+    ) -> Path | None:
         """Write the samplesheet to a CSV file in the run directory. Return the path."""
         if not samplesheet.empty:
             csv_path = run_path / "SampleSheet.csv"
