@@ -7,19 +7,6 @@ from dataflow_dmx.core.adapters.base import InstrumentAdapter
 # NOTE: Perhaps better read from a config file or environment variable
 AVITI_DEMUX = "/opt/element/aviti-demux"
 
-# Aviti run-id pattern:
-#   20250822_AV242106_A2247654903
-#   {YYYYMMDD}_{instrument}_{side}{flowcell}
-# where side is 'A' or 'B'
-AVITI_RUNID_RE = re.compile(
-    r"""
-    ^(?P<date>\d{8})_                # YYYYMMDD
-    (?P<instrument>AV\d+)_           # AV instrument id
-    (?P<side>[AB])(?P<flowcell>\d+)  # side + numeric flowcell
-    $""",
-    re.VERBOSE,
-)
-
 
 class ElementAdapterMixin(InstrumentAdapter):
     """Any particular functionality shared by Element instruments in the future must be implemented here."""
@@ -30,18 +17,31 @@ class AvitiAdapter(ElementAdapterMixin):
 
     name = "aviti"
 
+    # Aviti run-id pattern:
+    #   20250822_AV242106_A2247654903
+    #   {YYYYMMDD}_{instrument}_{side}{flowcell}
+    # where side is 'A' or 'B'
+    RUNID_RE = re.compile(
+        r"""
+        ^(?P<date>\d{8})_               # YYYYMMDD
+        (?P<instrument>AV\d+)_          # AV instrument id
+        (?P<side>[AB])(?P<fcid>\d+)$    # side + numeric flowcell
+        """,
+        re.VERBOSE,
+    )
+
     # Not needed, but may be used for validation
     @classmethod
     def matches(cls, run_id):
         """Return True iff run_id matches the Aviti pattern."""
-        return bool(AVITI_RUNID_RE.match(run_id))
+        return bool(cls.RUNID_RE.match(run_id))
 
     def extract_flowcell_id(self) -> str:
         """
         Return side+flowcell (e.g. 'A2247654903').
         Fail fast if run_id is malformed.
         """
-        m = AVITI_RUNID_RE.match(self.run_id)
+        m = self.RUNID_RE.match(self.run_id)
         if not m:
             # Raise early with context;
             raise ValueError(
