@@ -29,8 +29,12 @@ class InstrumentAdapter(ABC):
     def build_demux_config(self) -> DemuxConfig: ...
 
     def __init__(self, run_path: Path):
-        # By run_id I mean the name of the run directory, e.g. "20250101_L00123_0123_ABCDEFGH". Do you call it something else?
-        # NOTE: I assume we can use the dir name as run_id
+        """Initialize the adapter with the run directory path.
+        Parameters
+        ----------
+        run_path : Path
+            Path to the run directory, e.g. /data/illumina/miseq/250819_M01543_0642_000000000-M5BLC
+        """
         self.run_id = run_path.name
         self.run_path = run_path
 
