@@ -3,20 +3,38 @@ name = "dmx"
 version = "0.0.1"
 description = "Helper script for pre- and post-processing of demultiplexing"
 authors = [
-    { name = "Sara Sjunnebo", email = "sara.sjunnebo@scilifelab.se" }
+    { name = "Sara Sjunnebo", email = "sara.sjunnebo@scilifelab.se" },
+    { name = "Anastasios Glaros", email = "anastasios.glaros@scilifelab.se" }
 ]
 readme = "README.md"
 
 requires-python = ">=3.11"
 dependencies = [
+    "prefect>=3.4.5",
     "pandas",
     "click",
 ]
 
-[project.scripts]
-dmx = "dmx.cli:cli"
+[project.optional-dependencies]
+ygg = [
+    "yggdrasil @ git+https://github.com/NationalGenomicsInfrastructure/Yggdrasil.git@dev",
+    "couchdb",
+]
 
-[dependency-groups]
 dev = [
     "ruff>=0.11.8",
+    "pytest",
 ]
+
+[project.scripts]
+dataflow-dmx = "dataflow_dmx.cli:cli"
+
+[project.entry-points."ygg.handler"]
+flowcell-dmx = "dataflow_dmx.yggdrasil_realm.flowcell_handler:FlowcellHandler"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["dataflow_dmx"]
