@@ -4,7 +4,6 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import ClassVar
 
-import couchdb  # type: ignore
 import pandas as pd  # type: ignore
 
 from dataflow_dmx.core.adapters.base import DemuxConfig  # type: ignore
@@ -57,13 +56,16 @@ class IlluminaAdapterMixin(InstrumentAdapter):
         return m.group("fcid")
 
     def read_samplesheet(self, flowcell_id: str) -> pd.DataFrame:
-        try:
-            return self.samplesheet_dm.get(flowcell_id)
-        except couchdb.http.ResourceNotFound:
+        # return empty DataFrame if not found
+        sample_sheet: pd.DataFrame = (
+            self.samplesheet_dm.get(flowcell_id) or pd.DataFrame()
+        )
+
+        if sample_sheet.empty:
             self.logger.warning(
-                f"SampleSheet for flowcell {flowcell_id} not found in CouchDB"
+                f"No SampleSheet found for flowcell {flowcell_id}, returning empty DataFrame"
             )
-            return pd.DataFrame()  # return empty DataFrame if not found
+        return sample_sheet
 
     def transform_samplesheet(self, samplesheet: pd.DataFrame) -> pd.DataFrame:
         """Transform the samplesheet to the expected format."""

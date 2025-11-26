@@ -60,7 +60,8 @@ class SampleSheetDBManager(CouchDBHandler):  # type: ignore # inherits when lib 
             return self._dummy_df.copy()
 
         # --- real CouchDB path --------------------------------------
-        doc = self.db[flowcell_id]  # may raise KeyError
+        # TODO: Check the id used again when the Samplesheets database is finalised
+        doc = self.fetch_document_by_id(flowcell_id)
         csv_bytes = doc["_attachments"]["samplesheet.csv"]["data"]
         return pd.read_csv(io.BytesIO(csv_bytes), dtype=str)
 

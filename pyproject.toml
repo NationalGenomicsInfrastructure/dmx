@@ -18,7 +18,6 @@ dependencies = [
 [project.optional-dependencies]
 ygg = [
     "yggdrasil @ git+https://github.com/NationalGenomicsInfrastructure/Yggdrasil.git@dev",
-    "couchdb",
 ]
 
 dev = [
