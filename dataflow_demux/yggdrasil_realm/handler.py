@@ -8,7 +8,7 @@ from yggdrasil.flow.model import Plan
 from yggdrasil.flow.planner import PlanDraft, PlanningContext
 
 from .recipes import demux_pipeline
-from .utils import normalize_flowcell_id
+from .utils import normalize_flowcell_id, validate_lane_payload
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,9 @@ class DemuxHandler(BaseHandler):
             return None
         return matches[-1]
 
-    async def generate_plan_draft(self, payload: dict[str, Any]) -> PlanDraft:
+    async def generate_plan_drafts(
+        self, payload: dict[str, Any]
+    ) -> list[PlanDraft]:
         ctx: PlanningContext = payload["planning_ctx"]
         source_db = payload.get("source", "unknown")
 
@@ -66,25 +68,25 @@ class DemuxHandler(BaseHandler):
             # so doc is not embedded in the change event. Fetch it by _id directly.
             doc_id = payload.get("doc_id") or ctx.scope.get("id", "")
             if not doc_id:
-                return self._deferred(ctx, "demux_sample_info trigger missing doc_id.")
+                return [self._deferred(ctx, "demux_sample_info trigger missing doc_id.")]
             if doc_id.startswith("_"):
                 # Design docs and internal CouchDB documents — should be filtered by
                 # WatchSpec.filter_expr but guard here as defense-in-depth.
-                return self._deferred(
+                return [self._deferred(
                     ctx, f"Skipping internal CouchDB document '{doc_id}'."
-                )
+                )]
 
             demux_doc = await demux_db.get(doc_id)
             if not demux_doc:
-                return self._deferred(
+                return [self._deferred(
                     ctx, f"demux_sample_info document '{doc_id}' not found or deleted."
-                )
+                )]
 
             canonical_fcid = normalize_flowcell_id(demux_doc.get("flowcell_id", ""))
             if not canonical_fcid:
-                return self._deferred(
+                return [self._deferred(
                     ctx, "demux_sample_info document missing flowcell_id."
-                )
+                )]
 
             fc_doc = await fc_db.find_one(
                 {"flowcell_id": {"$in": [canonical_fcid, f"A{canonical_fcid}"]}}
@@ -95,16 +97,16 @@ class DemuxHandler(BaseHandler):
             # The watcher performs a separate GET per document, so payload["doc"] is populated.
             canonical_fcid = ctx.scope.get("id", "")
             if not canonical_fcid:
-                return self._deferred(
+                return [self._deferred(
                     ctx,
                     "flowcell_status trigger missing canonical flowcell_id in scope.",
-                )
+                )]
 
             fc_doc = payload.get("doc") or None
             if not fc_doc:
-                return self._deferred(
+                return [self._deferred(
                     ctx, "flowcell_status trigger missing document in payload."
-                )
+                )]
 
             demux_doc = await demux_db.find_one(
                 {"flowcell_id": {"$in": [canonical_fcid, f"A{canonical_fcid}"]}}
@@ -113,15 +115,15 @@ class DemuxHandler(BaseHandler):
         logger.info(f"Planning demux for {canonical_fcid} triggered by {source_db}")
 
         if not fc_doc:
-            return self._deferred(
+            return [self._deferred(
                 ctx,
                 f"No flowcell_status document found for flowcell_id '{canonical_fcid}'.",
-            )
+            )]
         if not demux_doc:
-            return self._deferred(
+            return [self._deferred(
                 ctx,
                 f"No demux_sample_info document found for flowcell_id '{canonical_fcid}'.",
-            )
+            )]
 
         # Readiness Checks
         events = fc_doc.get("events", [])
@@ -129,67 +131,98 @@ class DemuxHandler(BaseHandler):
         final_transfer_event = self._get_last_event(events, "final_transfer_started")
 
         if not transferred_event:
-            return self._deferred(
+            return [self._deferred(
                 ctx, "flowcell_status missing 'transferred_to_hpc' event."
-            )
+            )]
 
         if not final_transfer_event:
-            return self._deferred(
+            return [self._deferred(
                 ctx, "flowcell_status missing 'final_transfer_started' event."
-            )
+            )]
 
         destination_path = final_transfer_event.get("data", {}).get("destination_path")
         if not destination_path:
-            return self._deferred(
+            return [self._deferred(
                 ctx, "final_transfer_started event missing destination_path."
-            )
+            )]
 
         runfolder_id = fc_doc.get("runfolder_id", fc_doc.get("runfolder_name"))
         if not runfolder_id:
-            return self._deferred(ctx, "flowcell_status missing runfolder_id.")
+            return [self._deferred(ctx, "flowcell_status missing runfolder_id.")]
 
-        samplesheets = demux_doc.get(
-            "uploaded_lims_info", demux_doc.get("samplesheets", [])
-        )
+        samplesheets = demux_doc.get("samplesheets", [])
         if not samplesheets:
-            return self._deferred(ctx, "demux_sample_info missing samplesheets.")
-
-        selected_samplesheet = (
-            samplesheets[0] if isinstance(samplesheets[0], dict) else samplesheets
-        )
+            return [self._deferred(ctx, "demux_sample_info missing samplesheets.")]
 
         hpc_runfolder_path = os.path.join(destination_path, runfolder_id)
 
-        scenario = {
-            "canonical_flowcell_id": canonical_fcid,
-            "triggering_source": source_db,
-            "hpc_runfolder_path": hpc_runfolder_path,
-            "runfolder_id": runfolder_id,
-            "samplesheet_payload": selected_samplesheet,
-            "flowcell_status_doc": {
-                "_id": fc_doc.get("_id"),
-                "_rev": fc_doc.get("_rev"),
-            },
-            "demux_sample_info_doc": {
-                "_id": demux_doc.get("_id"),
-                "_rev": demux_doc.get("_rev"),
-                "metadata": demux_doc.get("metadata", {}),
-            },
-        }
+        plan_drafts: list[PlanDraft] = []
+        for idx, lane_entry in enumerate(samplesheets):
+            if not isinstance(lane_entry, dict):
+                logger.warning(
+                    "Skipping non-dict samplesheet entry at index %d for %s.",
+                    idx,
+                    canonical_fcid,
+                )
+                continue
 
-        steps = demux_pipeline(scenario=scenario)
+            try:
+                validate_lane_payload(lane_entry)
+            except ValueError as exc:
+                logger.warning(
+                    "Skipping invalid samplesheet entry at index %d for %s: %s",
+                    idx,
+                    canonical_fcid,
+                    exc,
+                )
+                continue
 
-        plan = Plan(
-            plan_id=f"{self.realm_id}:{canonical_fcid}",
-            realm=self.realm_id or "dmx_realm",
-            scope=ctx.scope,
-            steps=steps,
+            lane_id = str(lane_entry.get("lane", idx + 1))
+
+            scenario = {
+                "canonical_flowcell_id": canonical_fcid,
+                "triggering_source": source_db,
+                "hpc_runfolder_path": hpc_runfolder_path,
+                "runfolder_id": runfolder_id,
+                "lane_id": lane_id,
+                "samplesheet_payload": lane_entry,
+                "flowcell_status_doc": {
+                    "_id": fc_doc.get("_id"),
+                    "_rev": fc_doc.get("_rev"),
+                },
+                "demux_sample_info_doc": {
+                    "_id": demux_doc.get("_id"),
+                    "_rev": demux_doc.get("_rev"),
+                    "metadata": demux_doc.get("metadata", {}),
+                },
+            }
+
+            steps = demux_pipeline(scenario=scenario)
+
+            plan = Plan(
+                plan_id=f"{self.realm_id}:{canonical_fcid}:lane_{lane_id}",
+                realm=self.realm_id or "dmx_realm",
+                scope=ctx.scope,
+                steps=steps,
+            )
+
+            plan_drafts.append(
+                PlanDraft(
+                    plan=plan,
+                    auto_run=True,
+                    approvals_required=[],
+                    notes=f"Ready for demultiplexing lane {lane_id}",
+                    preview={"scenario": scenario, "step_count": len(steps)},
+                )
+            )
+
+        if not plan_drafts:
+            return [self._deferred(
+                ctx,
+                "No valid samplesheet entries found in demux_sample_info.",
+            )]
+
+        logger.info(
+            "Created %d lane plan(s) for %s.", len(plan_drafts), canonical_fcid
         )
-
-        return PlanDraft(
-            plan=plan,
-            auto_run=True,
-            approvals_required=[],
-            notes="Ready for demultiplexing",
-            preview={"scenario": scenario, "step_count": len(steps)},
-        )
+        return plan_drafts
