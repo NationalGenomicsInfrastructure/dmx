@@ -4,6 +4,8 @@ from yggdrasil.flow.artifacts import SimpleArtifactRef
 from yggdrasil.flow.model import StepResult
 from yggdrasil.flow.step import StepContext, step
 
+from .utils import render_bcl_convert_samplesheet, validate_lane_payload
+
 logger = logging.getLogger(__name__)
 
 
@@ -33,17 +35,18 @@ def materialize_extra_config(ctx: StepContext, scenario: dict) -> StepResult:
 
 @step
 def generate_samplesheet(ctx: StepContext, scenario: dict) -> StepResult:
-    """Generates and writes SampleSheet.csv to the execution directory."""
+    """Generates and writes SampleSheet.csv from the lane-specific samplesheet payload."""
     ss_payload = scenario["samplesheet_payload"]
+
+    validate_lane_payload(ss_payload)
+    ss_text = render_bcl_convert_samplesheet(ss_payload)
+
     ss_file = ctx.workdir / "SampleSheet.csv"
-    logger.info(f"Generating samplesheet at {ss_file}")
+    ss_file.write_text(ss_text)
 
-    # In reality there would be parsing of samplesheet dictionary into csv format.
-    # We write a mock CSV based on the payload provided.
-    ss_file.write_text("[Data]\nSample_ID,Sample_Name,index\nS1,Sample1,ATGC")
-
+    logger.info("Wrote SampleSheet.csv (%d bytes) to %s", ss_file.stat().st_size, ss_file)
     ctx.record_artifact(SimpleArtifactRef("samplesheet", "samplesheets"), path=ss_file)
-    return StepResult(metrics={"samplesheet_written": True})
+    return StepResult(metrics={"samplesheet_bytes": ss_file.stat().st_size})
 
 
 @step
@@ -73,5 +76,4 @@ def upload_results(ctx: StepContext, scenario: dict) -> StepResult:
         f"Simulating upload for run {scenario['runfolder_id']} with metadata {scenario_metadata}"
     )
 
-    return StepResult(metrics={"upload_status": "simulated_success"})
     return StepResult(metrics={"upload_status": "simulated_success"})

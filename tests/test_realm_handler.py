@@ -78,19 +78,19 @@ async def test_identical_plan_reconstruction(mock_ctx):
     mock_ctx.db_mocks["demux_sample_info_db"].find_one.return_value = demux_doc
 
     payload1 = {"source": "demux_sample_info", "planning_ctx": mock_ctx}
-    plan1 = await handler.generate_plan_draft(payload1)
+    plan1 = await handler.generate_plan_drafts(payload1)
 
     payload2 = {"source": "flowcell_status", "doc": yfc_doc, "planning_ctx": mock_ctx}
-    plan2 = await handler.generate_plan_draft(payload2)
+    plan2 = await handler.generate_plan_drafts(payload2)
 
     # Plans should have the same auto_run, exactly 6 steps, same step configs.
-    assert plan1.auto_run is True
-    assert len(plan1.plan.steps) == 6
-    assert plan2.auto_run is True
-    assert len(plan2.plan.steps) == 6
+    assert plan1[0].auto_run is True
+    assert len(plan1[0].plan.steps) == 6
+    assert plan2[0].auto_run is True
+    assert len(plan2[0].plan.steps) == 6
     # Same canonical_flowcell_id should be in the scenario payload and destination path derived
-    p1_scenario = plan1.preview["scenario"]
-    p2_scenario = plan2.preview["scenario"]
+    p1_scenario = plan1[0].preview["scenario"]
+    p2_scenario = plan2[0].preview["scenario"]
     assert p1_scenario["canonical_flowcell_id"] == "SC123"
     assert (
         p1_scenario["hpc_runfolder_path"] == "/incoming/path/230314_A00000_0000_AXXXXX"
@@ -112,10 +112,10 @@ async def test_missing_counterpart_defer(mock_ctx):
     mock_ctx.db_mocks["demux_sample_info_db"].find_one.return_value = None
 
     payload = {"source": "flowcell_status", "doc": yfc_doc, "planning_ctx": mock_ctx}
-    plan = await handler.generate_plan_draft(payload)
+    plan = await handler.generate_plan_drafts(payload)
 
-    assert plan.auto_run is False
-    assert "No demux_sample_info document found" in plan.notes
+    assert plan[0].auto_run is False
+    assert "No demux_sample_info document found" in plan[0].notes
 
 
 @pytest.mark.asyncio
@@ -146,9 +146,9 @@ async def test_transferred_to_hpc_absent_defer(mock_ctx):
     mock_ctx.db_mocks["flowcell_status_db"].find_one.return_value = yfc_doc
 
     payload = {"source": "demux_sample_info", "planning_ctx": mock_ctx}
-    plan = await handler.generate_plan_draft(payload)
+    plan = await handler.generate_plan_drafts(payload)
 
-    assert plan.auto_run is False
-    assert "Deferred: flowcell_status missing 'transferred_to_hpc' event" in plan.notes
-    assert plan.auto_run is False
-    assert "Deferred: flowcell_status missing 'transferred_to_hpc' event" in plan.notes
+    assert plan[0].auto_run is False
+    assert "Deferred: flowcell_status missing 'transferred_to_hpc' event" in plan[0].notes
+    assert plan[0].auto_run is False
+    assert "Deferred: flowcell_status missing 'transferred_to_hpc' event" in plan[0].notes
