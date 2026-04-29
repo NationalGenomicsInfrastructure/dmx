@@ -13,6 +13,32 @@ _BCL_DATA_REQUIRED_ROW_FIELDS: tuple[str, ...] = (
 _BCL_DATA_CONSISTENCY_CHECKED_FIELDS: tuple[str, ...] = ("index2", "OverrideCycles")
 
 
+def resolve_settings_index(entries: list[dict]) -> list[tuple[str, dict]]:
+    """Resolve (settings_idx_str, entry) pairs for samplesheet entries sharing a lane.
+
+    Rules:
+      1. Single entry with settings_index    → [(str(settings_index), entry)]
+      2. Single entry without settings_index → [("0", entry)]
+      3. Multiple entries, ANY missing settings_index → raise ValueError (ambiguous)
+      4. Multiple entries, ALL have settings_index   → [(str(si), entry), ...]
+
+    Raises:
+        ValueError: if multiple entries are present and any lack settings_index.
+    """
+    if len(entries) == 1:
+        raw = entries[0].get("settings_index")
+        return [(str(raw) if raw is not None else "0", entries[0])]
+
+    missing_count = sum(1 for e in entries if e.get("settings_index") is None)
+    if missing_count:
+        raise ValueError(
+            f"{missing_count} of {len(entries)} entries lack settings_index "
+            f"(ambiguous; all entries for this lane are skipped)."
+        )
+
+    return [(str(e["settings_index"]), e) for e in entries]
+
+
 def normalize_flowcell_id(fcid: str) -> str:
     """Canonical matching of SC... vs ASC..."""
     fcid = fcid or ""
@@ -40,9 +66,7 @@ def validate_lane_payload(lane_payload: dict) -> None:
 
     data = lane_payload["BCLConvert_Data"]
     if not isinstance(data, list):
-        raise ValueError(
-            f"BCLConvert_Data must be a list, got {type(data).__name__}."
-        )
+        raise ValueError(f"BCLConvert_Data must be a list, got {type(data).__name__}.")
     if not data:
         raise ValueError("BCLConvert_Data is empty.")
 
@@ -102,9 +126,7 @@ def render_bcl_convert_samplesheet(lane_payload: dict) -> str:
     data_rows = lane_payload["BCLConvert_Data"]
     # Build column order: required columns first, then extra columns in
     # first-row dict order (stable across Python 3.7+).
-    extra_cols = [
-        k for k in data_rows[0] if k not in _BCL_DATA_REQUIRED_ROW_FIELDS
-    ]
+    extra_cols = [k for k in data_rows[0] if k not in _BCL_DATA_REQUIRED_ROW_FIELDS]
     columns = list(_BCL_DATA_REQUIRED_ROW_FIELDS) + extra_cols
 
     buf.write("[BCLConvert_Data]\n")
