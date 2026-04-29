@@ -1,3 +1,4 @@
+import json
 import logging
 
 from yggdrasil.flow.artifacts import SimpleArtifactRef
@@ -18,6 +19,33 @@ def validate_runfolder(ctx: StepContext, scenario: dict) -> StepResult:
     # Normally we would os.path.isdir(hpc_path) or ssh verify it
     # We will pretend it exists successfully
     return StepResult(metrics={"path_validated": hpc_path})
+
+
+@step
+def upload_stats(ctx: StepContext, scenario: dict) -> StepResult:
+    """Parses XML runfolder stats and uploads them to CouchDB (mocked)."""
+    runfolder_id = scenario.get("runfolder_id", "unknown")
+    logger.info("Uploading runfolder stats for %s to CouchDB (mocked).", runfolder_id)
+
+    # TODO: parse RunInfo.xml / InterOp stats and upload to flowcell_status CouchDB doc
+    mock_stats = {
+        "runfolder_id": runfolder_id,
+        "status": "mocked",
+        "xml_files_parsed": [],
+        "total_clusters": 0,
+    }
+    stats_file = ctx.workdir / "runfolder_stats.json"
+    stats_file.write_text(json.dumps(mock_stats, indent=2))
+    ctx.record_artifact(SimpleArtifactRef("runfolder_stats", "stats"), path=stats_file)
+
+    return StepResult(
+        metrics={
+            "stats_upload_status": "mocked",
+            "runfolder_id": runfolder_id,
+            "xml_files_parsed": 0,
+            "total_clusters_mock": 0,
+        }
+    )
 
 
 @step
@@ -44,7 +72,9 @@ def generate_samplesheet(ctx: StepContext, scenario: dict) -> StepResult:
     ss_file = ctx.workdir / "SampleSheet.csv"
     ss_file.write_text(ss_text)
 
-    logger.info("Wrote SampleSheet.csv (%d bytes) to %s", ss_file.stat().st_size, ss_file)
+    logger.info(
+        "Wrote SampleSheet.csv (%d bytes) to %s", ss_file.stat().st_size, ss_file
+    )
     ctx.record_artifact(SimpleArtifactRef("samplesheet", "samplesheets"), path=ss_file)
     return StepResult(metrics={"samplesheet_bytes": ss_file.stat().st_size})
 
