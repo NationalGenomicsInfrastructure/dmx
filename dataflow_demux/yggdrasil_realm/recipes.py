@@ -3,9 +3,30 @@ from yggdrasil.flow.model import StepSpec
 _PREFIX = "dataflow_demux.yggdrasil_realm.steps"
 
 
+def initial_steps(scenario: dict) -> list[StepSpec]:
+    """Per-flowcell common plan: validate_runfolder → upload_stats."""
+    return [
+        StepSpec(
+            step_id="validate_runfolder",
+            name="Validate Runfolder in HPC",
+            fn_ref=f"{_PREFIX}.validate_runfolder",
+            params={"scenario": scenario},
+        ),
+        StepSpec(
+            step_id="upload_stats",
+            name="Upload Runfolder Stats",
+            fn_ref=f"{_PREFIX}.upload_stats",
+            params={"scenario": scenario},
+            deps=["validate_runfolder"],
+        ),
+    ]
+
+
 def demux_pipeline(scenario: dict) -> list[StepSpec]:
     """
-    Recipe that carries harvested doc metadata as a structured dict to the steps.
+    Per-lane/settings demux steps.
+    validate_runfolder is included here as well as in the common plan — lane plans
+    are independent and cannot rely on the common plan having already executed.
     """
     return [
         StepSpec(
@@ -26,14 +47,14 @@ def demux_pipeline(scenario: dict) -> list[StepSpec]:
             name="Generate SampleSheet.csv",
             fn_ref=f"{_PREFIX}.generate_samplesheet",
             params={"scenario": scenario},
-            deps=["validate_runfolder"],
+            deps=["materialize_config"],
         ),
         StepSpec(
             step_id="execute_demux",
             name="Simulate Execute Demux (Nextflow)",
             fn_ref=f"{_PREFIX}.execute_demux",
             params={"scenario": scenario},
-            deps=["materialize_config", "generate_samplesheet"],
+            deps=["generate_samplesheet"],
         ),
         StepSpec(
             step_id="collect_results",
